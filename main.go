@@ -16,6 +16,7 @@ import (
 type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
+	platform       string
 }
 
 func main() {
@@ -29,6 +30,11 @@ func main() {
 		log.Fatal("DB_URL is required")
 	}
 
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM is required")
+	}
+
 	dbconn, err := sql.Open("postgres", dbURL)
 
 	if err != nil {
@@ -40,6 +46,7 @@ func main() {
 	var apiCfg = apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
+		platform:       platform,
 	}
 
 	mux := http.NewServeMux()
@@ -54,6 +61,7 @@ func main() {
 		io.WriteString(w, http.StatusText(http.StatusOK))
 	})
 	mux.HandleFunc("POST /api/validate_chirp", validate_length)
+	mux.HandleFunc("POST /api/users", apiCfg.create_user)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
