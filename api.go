@@ -3,7 +3,29 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
+
+func censor_words(text string, forbidden_words []string) string {
+	replacement := "****"
+	aux := text
+	curr := 0
+	max := len(forbidden_words)
+
+	for {
+		if curr < max {
+			target := strings.Index(strings.ToLower(aux), forbidden_words[curr])
+			if target != -1 {
+				aux = aux[:target] + replacement + aux[target+len(forbidden_words[curr]):]
+			} else {
+				curr += 1
+			}
+		} else {
+			break
+		}
+	}
+	return aux
+}
 
 func validate_length(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
@@ -11,7 +33,7 @@ func validate_length(w http.ResponseWriter, req *http.Request) {
 	}
 
 	type successS struct {
-		Valid bool `json:"valid"`
+		CleanedBody string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -29,7 +51,9 @@ func validate_length(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	forbidden_words := []string{"kerfuffle", "sharbert", "fornax"}
+
 	responseWithJSON(w, http.StatusOK, successS{
-		Valid: true,
+		CleanedBody: censor_words(params.Body, forbidden_words),
 	})
 }
