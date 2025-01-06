@@ -1,13 +1,25 @@
 package main
 
 import (
+	"chirpy/internal/database"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+func validateChirp(body string) (string, error) {
+	const maxChirpLength = 140
+	if len(body) > maxChirpLength {
+		return "", errors.New("chirp is too long")
+	}
+	forbidden_words := []string{"kerfuffle", "sharbert", "fornax"}
+	cleaned := censor_words(body, forbidden_words)
+	return cleaned, nil
+}
 
 func censor_words(text string, forbidden_words []string) string {
 	replacement := "****"
@@ -30,13 +42,18 @@ func censor_words(text string, forbidden_words []string) string {
 	return aux
 }
 
-func validate_length(w http.ResponseWriter, req *http.Request) {
+func (cfg *apiConfig) create_chirp(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Body string `json:"body"`
+		Body   string    `json:"body"`
+		UserID uuid.UUID `json:"user_id"`
 	}
 
 	type successS struct {
-		CleanedBody string `json:"cleaned_body"`
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -48,16 +65,24 @@ func validate_length(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	const maxChirpLength = 140
-	if len(params.Body) > maxChirpLength {
+	cleanedBody, err := validateChirp(params.Body)
+	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
 		return
 	}
 
-	forbidden_words := []string{"kerfuffle", "sharbert", "fornax"}
+	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{Body: cleanedBody, UserID: params.UserID})
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not create chirp", err)
+		return
+	}
 
-	responseWithJSON(w, http.StatusOK, successS{
-		CleanedBody: censor_words(params.Body, forbidden_words),
+	responseWithJSON(w, http.StatusCreated, successS{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
 	})
 }
 

@@ -60,7 +60,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, http.StatusText(http.StatusOK))
 	})
-	mux.HandleFunc("POST /api/validate_chirp", validate_length)
+	mux.HandleFunc("POST /api/chirps", apiCfg.create_chirp)
 	mux.HandleFunc("POST /api/users", apiCfg.create_user)
 
 	srv := &http.Server{
