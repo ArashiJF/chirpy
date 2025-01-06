@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -37,6 +38,44 @@ func healthz(w http.ResponseWriter, req *http.Request) {
 	io.WriteString(w, http.StatusText(http.StatusOK))
 }
 
+func validate_length(w http.ResponseWriter, req *http.Request) {
+	type paramsS struct {
+		Body string `json:"body"`
+	}
+
+	type errorS struct {
+		Error string `json:"error"`
+	}
+
+	type successS struct {
+		Valid bool `json:"valid"`
+	}
+
+	decoder := json.NewDecoder(req.Body)
+	params := paramsS{}
+	err := decoder.Decode(&params)
+
+	w.Header().Set("Content-Type", "application/json")
+
+	if err != nil {
+		errJson, _ := json.Marshal(errorS{Error: "Something went wrong"})
+
+		log.Printf("Json error: %s", err)
+		w.WriteHeader(500)
+		w.Write(errJson)
+	}
+
+	if len(params.Body) <= 140 {
+		successJson, _ := json.Marshal(successS{Valid: true})
+		w.WriteHeader(200)
+		w.Write(successJson)
+	} else {
+		errJson, _ := json.Marshal(errorS{Error: "Chirp is too long"})
+		w.WriteHeader(400)
+		w.Write(errJson)
+	}
+}
+
 func main() {
 	const filepathRoot = "."
 	const port = "8080"
@@ -46,7 +85,10 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
+
 	mux.HandleFunc("GET /api/healthz", healthz)
+	mux.HandleFunc("POST /api/validate_chirp", validate_length)
+
 	mux.HandleFunc("GET /admin/metrics", apiCfg.metrics)
 	mux.HandleFunc("POST /admin/reset", apiCfg.reset)
 
