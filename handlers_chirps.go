@@ -86,38 +86,28 @@ func (cfg *apiConfig) create_chirp(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-func (cfg *apiConfig) create_user(w http.ResponseWriter, req *http.Request) {
-	type parameters struct {
-		Email string `json:"email"`
-	}
-
+func (cfg *apiConfig) get_chirps(w http.ResponseWriter, req *http.Request) {
 	type successS struct {
 		ID        uuid.UUID `json:"id"`
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
-		Email     string    `json:"email"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
 	}
-
-	decoder := json.NewDecoder(req.Body)
-	params := parameters{}
-	err := decoder.Decode(&params)
-
+	chirps, err := cfg.db.GetChirps(req.Context())
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
-		return
+		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirps", err)
 	}
 
-	user, err := cfg.db.CreateUser(req.Context(), params.Email)
-
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "oops", err)
-		return
+	responseChirps := make([]successS, len(chirps))
+	for i, chirp := range chirps {
+		responseChirps[i] = successS{
+			ID:        chirp.ID,
+			CreatedAt: chirp.CreatedAt,
+			UpdatedAt: chirp.UpdatedAt,
+			Body:      chirp.Body,
+			UserID:    chirp.UserID,
+		}
 	}
-
-	responseWithJSON(w, http.StatusCreated, successS{
-		ID:        user.ID,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
-		Email:     user.Email,
-	})
+	responseWithJSON(w, http.StatusOK, responseChirps)
 }

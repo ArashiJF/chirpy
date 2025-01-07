@@ -60,6 +60,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		io.WriteString(w, http.StatusText(http.StatusOK))
 	})
+	mux.HandleFunc("GET /api/chirps", apiCfg.get_chirps)
 	mux.HandleFunc("POST /api/chirps", apiCfg.create_chirp)
 	mux.HandleFunc("POST /api/users", apiCfg.create_user)
 
