@@ -97,6 +97,7 @@ func (cfg *apiConfig) get_chirps(w http.ResponseWriter, req *http.Request) {
 	chirps, err := cfg.db.GetChirps(req.Context())
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Could not retrieve chirps", err)
+		return
 	}
 
 	responseChirps := make([]successS, len(chirps))
@@ -110,4 +111,35 @@ func (cfg *apiConfig) get_chirps(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 	responseWithJSON(w, http.StatusOK, responseChirps)
+}
+
+func (cfg *apiConfig) get_chirp(w http.ResponseWriter, req *http.Request) {
+	type successS struct {
+		ID        uuid.UUID `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Body      string    `json:"body"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
+
+	pathId := req.PathValue("chirpID")
+	id, err := uuid.Parse(pathId)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Bad ID", err)
+		return
+	}
+
+	chirp, err := cfg.db.GetChirp(req.Context(), id)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Not found", err)
+		return
+	}
+
+	responseWithJSON(w, http.StatusOK, successS{
+		ID:        chirp.ID,
+		CreatedAt: chirp.CreatedAt,
+		UpdatedAt: chirp.UpdatedAt,
+		Body:      chirp.Body,
+		UserID:    chirp.UserID,
+	})
 }
