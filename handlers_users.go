@@ -55,8 +55,9 @@ func (cfg *apiConfig) create_user(w http.ResponseWriter, req *http.Request) {
 
 func (cfg *apiConfig) login_user(w http.ResponseWriter, req *http.Request) {
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email         string `json:"email"`
+		Password      string `json:"password"`
+		ExpiresInSecs int    `json:"expires_in_seconds"`
 	}
 
 	type successS struct {
@@ -64,6 +65,7 @@ func (cfg *apiConfig) login_user(w http.ResponseWriter, req *http.Request) {
 		CreatedAt time.Time `json:"created_at"`
 		UpdatedAt time.Time `json:"updated_at"`
 		Email     string    `json:"email"`
+		Token     string    `json:"token"`
 	}
 
 	decoder := json.NewDecoder(req.Body)
@@ -86,10 +88,22 @@ func (cfg *apiConfig) login_user(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	tokenExp := time.Hour
+	if params.ExpiresInSecs > 0 && params.ExpiresInSecs < 3600 {
+		tokenExp = time.Duration(params.ExpiresInSecs) * time.Second
+	}
+
+	token, err := auth.MakeJWT(user.ID, cfg.secret, tokenExp)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create access JWT", err)
+		return
+	}
+
 	responseWithJSON(w, 200, successS{
 		ID:        user.ID,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
 		Email:     user.Email,
+		Token:     token,
 	})
 }

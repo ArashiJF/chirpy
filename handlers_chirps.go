@@ -1,6 +1,7 @@
 package main
 
 import (
+	"chirpy/internal/auth"
 	"chirpy/internal/database"
 	"encoding/json"
 	"errors"
@@ -43,9 +44,20 @@ func censor_words(text string, forbidden_words []string) string {
 }
 
 func (cfg *apiConfig) create_chirp(w http.ResponseWriter, req *http.Request) {
+	headerToken, bearerErr := auth.GetBearerToken(req.Header)
+	if bearerErr != nil {
+		respondWithError(w, http.StatusUnauthorized, "Bad bearer", bearerErr)
+		return
+	}
+
+	userID, tokenErr := auth.ValidateJWT(headerToken, cfg.secret)
+	if tokenErr != nil {
+		respondWithError(w, http.StatusUnauthorized, "Bad token", bearerErr)
+		return
+	}
+
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
 	}
 
 	type successS struct {
@@ -71,7 +83,7 @@ func (cfg *apiConfig) create_chirp(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{Body: cleanedBody, UserID: params.UserID})
+	chirp, err := cfg.db.CreateChirp(req.Context(), database.CreateChirpParams{Body: cleanedBody, UserID: userID})
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Could not create chirp", err)
 		return
