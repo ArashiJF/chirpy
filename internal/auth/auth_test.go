@@ -155,3 +155,31 @@ func TestGetBearerToken(t *testing.T) {
 		})
 	}
 }
+
+func TestMakeRefreshToken(t *testing.T) {
+	refresh1, _ := MakeRefreshToken()
+	refresh2, _ := MakeRefreshToken()
+
+	tests := []struct {
+		name     string
+		refresh1 string
+		refresh2 string
+		wantErr  bool
+	}{
+		{
+			name:     "Each call should return different hex",
+			refresh1: refresh1,
+			refresh2: refresh2,
+			wantErr:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.refresh1 == tt.refresh2 {
+				t.Errorf("MakeRefreshToken() refresh was same %v = %v", tt.refresh1, refresh2)
+				return
+			}
+		})
+	}
+}

@@ -52,7 +52,7 @@ func (cfg *apiConfig) create_chirp(w http.ResponseWriter, req *http.Request) {
 
 	userID, tokenErr := auth.ValidateJWT(headerToken, cfg.secret)
 	if tokenErr != nil {
-		respondWithError(w, http.StatusUnauthorized, "Bad token", bearerErr)
+		respondWithError(w, http.StatusUnauthorized, "Bad token", tokenErr)
 		return
 	}
 
